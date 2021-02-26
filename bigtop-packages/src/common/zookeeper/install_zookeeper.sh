@@ -105,15 +105,18 @@ CONF_DIR=/etc/zookeeper/conf
 CONF_DIST_DIR=/etc/zookeeper/conf.dist/
 SYSTEM_INCLUDE_DIR=${SYSTEM_INCLUDE_DIR:-/usr/include}
 SYSTEM_LIB_DIR=${SYSTEM_LIB_DIR:-/usr/lib}
+ZKSERVER_DIR=${BUILD_DIR}/zookeeper-server/target
+ZKCONTRIB_DIR=${BUILD_DIR}/zookeeper-contrib
 
 install -d -m 0755 $PREFIX/$LIB_DIR/
-rm -f $BUILD_DIR/zookeeper-*-javadoc.jar $BUILD_DIR/zookeeper-*-bin.jar $BUILD_DIR/zookeeper-*-sources.jar $BUILD_DIR/zookeeper-*-test.jar
-cp $BUILD_DIR/zookeeper*.jar $PREFIX/$LIB_DIR/
+rm -f $ZKSERVER_DIR/zookeeper-*-javadoc.jar $ZKSERVER_DIR/zookeeper-*-bin.jar $ZKSERVER_DIR/zookeeper-*-sources.jar $ZKSERVER_DIR/zookeeper-*-tests.jar
+cp $ZKSERVER_DIR/zookeeper*.jar $PREFIX/$LIB_DIR/
+install -d -m 0755 ${PREFIX}/${LIB_DIR}/contrib
 install -d -m 0755 ${PREFIX}/${LIB_DIR}/contrib/rest
-install -d -m 0755 ${PREFIX}/${CONF_DIST_DIR}/rest
-cp ${BUILD_DIR}/zookeeper-contrib/zookeeper-contrib-rest/zookeeper-*-rest.jar ${PREFIX}/${LIB_DIR}/contrib/rest/
-cp -r ${BUILD_DIR}/zookeeper-contrib/zookeeper-contrib-rest/lib ${PREFIX}/${LIB_DIR}/contrib/rest/
-cp -r ${BUILD_DIR}/zookeeper-contrib/zookeeper-contrib-rest/conf/* ${PREFIX}/${CONF_DIST_DIR}/rest/
+install -d -m 0755 ${PREFIX}/${LIB_DIR}/contrib/rest/lib
+for module in rest; do
+cp  ${ZKCONTRIB_DIR}/zookeeper-contrib-${module}/target/*.jar ${PREFIX}/${LIB_DIR}/contrib/${module}/
+done
 
 # Make a symlink of zookeeper.jar to zookeeper-version.jar
 for x in $PREFIX/$LIB_DIR/zookeeper*jar ; do
@@ -121,21 +124,25 @@ for x in $PREFIX/$LIB_DIR/zookeeper*jar ; do
   ln -s $x $PREFIX/$LIB_DIR/zookeeper.jar
 done
 
-install -d -m 0755 $PREFIX/$LIB_DIR/lib
-cp $BUILD_DIR/lib/*.jar $PREFIX/$LIB_DIR/lib
+install -d -m 0755 $PREFIX/$LIB_DIR
+cp $ZKSERVER_DIR/lib/*.jar $PREFIX/$LIB_DIR
 
 # Copy in the configuration files
 install -d -m 0755 $PREFIX/$CONF_DIST_DIR
-cp zoo.cfg $BUILD_DIR/conf/* $PREFIX/$CONF_DIST_DIR/
+cp zoo.cfg $PREFIX/$CONF_DIST_DIR
+cp ${BUILD_DIR}/conf/* $PREFIX/$CONF_DIST_DIR/
 ln -s $CONF_DIR $PREFIX/$LIB_DIR/conf
+
+install -d -m 0755 ${PREFIX}/${LIB_DIR}/contrib
+install -d -m 0755 ${PREFIX}/${CONF_DIST_DIR}/rest
 
 # Copy in the /usr/bin/zookeeper-server wrapper
 install -d -m 0755 $PREFIX/$LIB_DIR/bin
 # FIXME: a workaround in preparation for Zookeeper 3.5
-echo '#!/bin/bash' > $BUILD_DIR/bin/zkServer-initialize.sh
+echo '#!/bin/bash' > ${BUILD_DIR}/bin/zkServer-initialize.sh
 
 for i in zkServer.sh zkEnv.sh zkCli.sh zkCleanup.sh zkServer-initialize.sh
-	do cp $BUILD_DIR/bin/$i $PREFIX/$LIB_DIR/bin
+	do cp ${BUILD_DIR}/bin/$i $PREFIX/$LIB_DIR/bin
 	chmod 755 $PREFIX/$LIB_DIR/bin/$i
 done
 
@@ -180,8 +187,12 @@ done
 
 # Copy in the docs
 install -d -m 0755 $PREFIX/$DOC_DIR
-cp -a $BUILD_DIR/docs/* $PREFIX/$DOC_DIR
-cp $BUILD_DIR/*.txt $PREFIX/$DOC_DIR/
+cp -a $ZKSERVER_DIR/apidocs/*.html $PREFIX/$DOC_DIR
+cp -r $BUILD_DIR/zookeeper-docs/target/html/images $PREFIX/$DOC_DIR/images
+cp -r $BUILD_DIR/zookeeper-docs/target/html/skin $PREFIX/$DOC_DIR/skin
+cp -r $BUILD_DIR/zookeeper-jute/target/apidocs $PREFIX/$DOC_DIR/apidocs
+cp -r $BUILD_DIR/zookeeper-server/target/apidocs $PREFIX/$DOC_DIR/apidocs
+cp $BUILD_DIR/*.txt $PREFIX/
 
 install -d -m 0755 ${PREFIX}/etc/default
 cp zookeeper.default ${PREFIX}/etc/default/zookeeper
@@ -198,10 +209,9 @@ install -d ${PREFIX}/$SYSTEM_INCLUDE_DIR
 install -d ${PREFIX}/$SYSTEM_LIB_DIR
 install -d ${PREFIX}/${LIB_DIR}-native
 
-(cd ${BUILD_DIR}/.. && tar xzf zookeeper-*-lib.tar.gz)
-cp -R ${BUILD_DIR}/../usr/include/* ${PREFIX}/${SYSTEM_INCLUDE_DIR}/
-cp -R ${BUILD_DIR}/../usr/lib*/* ${PREFIX}/${SYSTEM_LIB_DIR}/
-cp -R ${BUILD_DIR}/../usr/bin/* ${PREFIX}/${LIB_DIR}-native/
+cp -r ${BUILD_DIR}/zookeeper-client/zookeeper-client-c/include/* ${PREFIX}/${SYSTEM_INCLUDE_DIR}/
+cp -R ${BUILD_DIR}/zookeeper-server/target/lib/*.* ${PREFIX}/${SYSTEM_LIB_DIR}/
+cp -R ${BUILD_DIR}/bin/* ${PREFIX}/${LIB_DIR}-native/
 for binary in ${PREFIX}/${LIB_DIR}-native/*; do
   cat > ${PREFIX}/${BIN_DIR}/`basename ${binary}` <<EOF
 #!/bin/bash
